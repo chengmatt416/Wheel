@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="zh-TW" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>⚡ 終極防偽智慧轉盤</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #08101e;
+            --surface: #0f1f35;
+            --card: rgba(15, 31, 53, 0.85);
+            --text: #e8f0fe;
+            --muted: #6b85a8;
+            --primary: #2979ff;
+            --accent: #00e5ff;
+            --gold: #ffd740;
+            --danger: #ff5252;
+            --success: #00e676;
+            --border: rgba(41, 121, 255, 0.2);
+            --glow: rgba(41, 121, 255, 0.4);
+            --font-body: 'Noto Sans TC', sans-serif;
+            --font-mono: 'Space Mono', monospace;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            background: var(--bg);
+            background-image:
+                radial-gradient(ellipse 80% 50% at 20% 10%, rgba(41,121,255,0.08) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 40% at 80% 90%, rgba(0,229,255,0.06) 0%, transparent 60%);
+            color: var(--text);
+            font-family: var(--font-body);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 16px;
+            overflow-x: hidden;
+        }
+
+        /* ===== APP LAYOUT ===== */
+        #appMode { width: 100%; max-width: 1040px; display: flex; flex-direction: column; align-items: center; }
+
+        header {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding: 0 4px;
+        }
+        header h1 {
+            font-size: 1.4rem;
+            font-weight: 900;
+            letter-spacing: -0.5px;
+            background: linear-gradient(120deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: row;
+            gap: 28px;
+            width: 100%;
+            align-items: flex-start;
+        }
+
+        /* ===== WHEEL ===== */
+        .wheel-section { flex: 1; display: flex; flex-direction: column; align-items: center; }
+
+        .wheel-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 420px;
+            aspect-ratio: 1/1;
+            margin-bottom: 20px;
+        }
+        /* Outer decorative ring */
+        .wheel-wrapper::before {
+            content: '';
+            position: absolute;
+            inset: -6px;
+            border-radius: 50%;
+            background: conic-gradient(var(--primary), var(--accent), var(--primary));
+            opacity: 0.25;
+            animation: ring-spin 12s linear infinite;
+        }
+        @keyframes ring-spin { to { transform: rotate(360deg); } }
+
+        .pointer {
+            position: absolute;
+            top: -14px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            width: 32px;
+            height: 38px;
+            background: linear-gradient(160deg, #ff6b6b, #ee0000);
+            clip-path: polygon(50% 100%, 0 0, 100% 0);
+            filter: drop-shadow(0 4px 8px rgba(238,0,0,0.6));
+        }
+
+        #wheelCanvas {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 3px solid rgba(41,121,255,0.3);
+            box-shadow: 0 0 40px rgba(41,121,255,0.15), 0 0 80px rgba(0,229,255,0.05);
+            will-change: transform;
+        }
+
+        .spin-controls { display: flex; gap: 10px; width: 100%; max-width: 420px; }
+
+        .spin-btn {
+            flex: 3;
+            background: linear-gradient(135deg, var(--primary), #1565c0);
+            color: #fff;
+            border: none;
+            padding: 16px 0;
+            font-size: 1.15rem;
+            font-weight: 700;
+            border-radius: 14px;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(41,121,255,0.35);
+            transition: transform 0.15s, box-shadow 0.15s;
+            letter-spacing: 0.5px;
+        }
+        .spin-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(41,121,255,0.5); }
+        .spin-btn:active:not(:disabled) { transform: scale(0.97); }
+        .spin-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+        .auto-draw-btn {
+            flex: 1;
+            background: var(--card);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 14px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            gap: 2px;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .auto-draw-btn:hover:not(:disabled) { border-color: var(--accent); background: rgba(0,229,255,0.06); }
+        .auto-draw-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+        .local-warning {
+            display: none;
+            margin-top: 14px;
+            padding: 10px 14px;
+            background: rgba(255,215,64,0.08);
+            border: 1px solid rgba(255,215,64,0.3);
+            border-radius: 10px;
+            font-size: 0.8rem;
+            color: #ffd740;
+            text-align: center;
+            line-height: 1.6;
+            width: 100%;
+            max-width: 420px;
+        }
+
+        /* ===== PANEL ===== */
+        .panel-section {
+            flex: 1;
+            background: var(--card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            max-width: 460px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .tabs { display: flex; border-bottom: 1px solid var(--border); }
+        .tab {
+            flex: 1;
+            padding: 13px 0;
+            text-align: center;
+            cursor: pointer;
+            font-weight: 700;
+            color: var(--muted);
+            font-size: 0.9rem;
+            transition: color 0.2s, background 0.2s;
+        }
+        .tab:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+        .tab.active {
+            color: var(--accent);
+            background: rgba(0,229,255,0.05);
+            border-bottom: 2px solid var(--accent);
+        }
+
+        .tab-content { display: none; padding: 20px; flex: 1; overflow-y: auto; max-height: 520px; }
+        .tab-content.active { display: flex; flex-direction: column; gap: 14px; }
+
+        textarea, input[type="text"], input[type="number"] {
+            width: 100%;
+            background: rgba(0,0,0,0.25);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-family: var(--font-body);
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        textarea:focus, input:focus { border-color: var(--primary); }
+        textarea { height: 220px; resize: none; line-height: 1.6; }
+
+        .hint { font-size: 0.78rem; color: var(--muted); line-height: 1.7; }
+        .hint code {
+            background: rgba(41,121,255,0.15);
+            padding: 1px 5px;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color: var(--accent);
+        }
+
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 11px 14px;
+            background: rgba(0,0,0,0.15);
+            border-radius: 10px;
+            font-size: 0.9rem;
+            gap: 10px;
+        }
+        .setting-row span { flex: 1; }
+        .setting-row input[type="text"] { width: 120px; padding: 6px 8px; }
+        .setting-row input[type="number"] { width: 64px; text-align: center; padding: 6px 4px; }
+
+        /* Toggle switch */
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; inset: 0; background: rgba(255,255,255,0.15); border-radius: 24px; transition: 0.3s; }
+        .slider::before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: 0.3s; }
+        input:checked + .slider { background: var(--primary); }
+        input:checked + .slider::before { transform: translateX(20px); }
+
+        .export-btn {
+            padding: 11px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.06);
+            color: var(--text);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-family: var(--font-body);
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .export-btn:hover { background: rgba(255,255,255,0.1); border-color: var(--muted); }
+
+        /* History */
+        .list-container { display: flex; flex-direction: column; gap: 8px; }
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 11px 13px;
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            gap: 8px;
+        }
+        .history-item-info { flex: 1; min-width: 0; }
+        .history-item-name { font-weight: 700; font-size: 1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .history-item-meta { font-size: 0.72rem; color: var(--muted); font-family: var(--font-mono); margin-top: 2px; }
+        .history-actions { display: flex; gap: 5px; flex-shrink: 0; }
+        .history-btn {
+            padding: 5px 9px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.78rem;
+            font-family: var(--font-body);
+            border: 1px solid;
+            transition: background 0.2s;
+        }
+        .history-btn.restore { background: rgba(41,121,255,0.15); border-color: var(--primary); color: var(--text); }
+        .history-btn.restore:hover { background: rgba(41,121,255,0.3); }
+        .history-btn.delete { background: rgba(255,82,82,0.15); border-color: var(--danger); color: var(--text); }
+        .history-btn.delete:hover { background: rgba(255,82,82,0.3); }
+
+        /* ===== MODAL ===== */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.88);
+            backdrop-filter: blur(6px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            z-index: 100;
+        }
+        .modal.active { opacity: 1; pointer-events: all; }
+        .modal-box {
+            background: linear-gradient(160deg, #0f2040, #08101e);
+            padding: 32px 28px;
+            border-radius: 24px;
+            text-align: center;
+            border: 1px solid rgba(41,121,255,0.35);
+            width: 90%;
+            max-width: 400px;
+            transform: scale(0.85) translateY(20px);
+            transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.6), 0 0 40px rgba(41,121,255,0.1);
+        }
+        .modal.active .modal-box { transform: scale(1) translateY(0); }
+
+        .modal-label { font-size: 0.9rem; color: var(--muted); margin-bottom: 6px; }
+        .modal-winner {
+            font-size: 2.2rem;
+            font-weight: 900;
+            margin: 8px 0 16px;
+            word-break: break-all;
+            line-height: 1.2;
+        }
+        .modal-winner.gold {
+            background: linear-gradient(to right, var(--gold), #ff9800);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .modal-winner.normal { color: #fff; }
+
+        #qrCodeImg {
+            width: 150px;
+            height: 150px;
+            margin: 0 auto 10px;
+            display: block;
+            background: #fff;
+            padding: 6px;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+        }
+        .qr-desc { font-size: 0.78rem; color: var(--muted); margin-bottom: 18px; line-height: 1.6; }
+
+        .modal-confirm {
+            background: linear-gradient(135deg, var(--primary), #1565c0);
+            color: #fff;
+            border: none;
+            padding: 13px 0;
+            border-radius: 14px;
+            font-size: 1.05rem;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            font-family: var(--font-body);
+            transition: opacity 0.2s;
+        }
+        .modal-confirm:hover { opacity: 0.9; }
+
+        /* ===== TOAST ===== */
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-120px);
+            background: rgba(0,230,118,0.92);
+            color: #001a0c;
+            padding: 12px 28px;
+            border-radius: 100px;
+            font-weight: 700;
+            font-size: 1rem;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 1000;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+
+        /* ===== COUNTDOWN ===== */
+        #countdownOverlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.92);
+            z-index: 999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 9rem;
+            font-weight: 900;
+            font-family: var(--font-mono);
+            color: var(--accent);
+            text-shadow: 0 0 60px var(--accent);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+        #countdownOverlay.active { opacity: 1; pointer-events: all; }
+
+        /* ===== CONFETTI ===== */
+        #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 99; }
+
+        /* ===== VERIFY MODE ===== */
+        #verifyMode {
+            display: none;
+            width: 100%;
+            max-width: 480px;
+            text-align: center;
+            margin-top: 3vh;
+        }
+        .verify-title { font-size: 1.15rem; color: var(--muted); margin-bottom: 24px; }
+
+        .cert-card {
+            background: linear-gradient(145deg, #0f1f35, #08101e);
+            border: 2px solid;
+            border-radius: 24px;
+            padding: 44px 28px 32px;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+            position: relative;
+            overflow: hidden;
+        }
+        .cert-card::before {
+            content: '';
+            position: absolute;
+            top: -40px; right: -40px;
+            width: 150px; height: 150px;
+            border-radius: 50%;
+            background: currentColor;
+            opacity: 0.04;
+        }
+        .cert-card.valid { border-color: var(--success); }
+        .cert-card.invalid { border-color: var(--danger); }
+
+        .cert-icon { font-size: 3.5rem; margin-bottom: 10px; }
+        .cert-label { font-size: 0.85rem; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px; }
+        .cert-prize {
+            font-size: 2.6rem;
+            font-weight: 900;
+            margin-bottom: 6px;
+            line-height: 1.2;
+            word-break: break-all;
+        }
+        .cert-prize.gold { background: linear-gradient(to right, var(--gold), #ff9800); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .cert-prize.normal { color: #fff; }
+        .cert-time { font-size: 0.9rem; color: var(--muted); font-family: var(--font-mono); margin-bottom: 28px; }
+
+        .cert-status {
+            padding: 11px 16px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 1rem;
+        }
+        .valid .cert-status { background: rgba(0,230,118,0.12); color: var(--success); }
+        .invalid .cert-status { background: rgba(255,82,82,0.12); color: var(--danger); }
+
+        .back-btn {
+            margin-top: 28px;
+            padding: 12px 32px;
+            border-radius: 100px;
+            border: 1px solid var(--border);
+            background: var(--card);
+            color: var(--text);
+            cursor: pointer;
+            font-family: var(--font-body);
+            font-size: 0.95rem;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.07); border-color: var(--muted); }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            .container { flex-direction: column; align-items: center; }
+            .wheel-section, .panel-section { width: 100%; max-width: 100%; }
+            .panel-section { max-height: none; }
+            .tab-content { max-height: 400px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- 驗證憑證頁面 -->
+<div id="verifyMode">
+    <div class="verify-title">🛡️ 數位防偽兌獎憑證</div>
+    <div class="cert-card" id="certCard">
+        <div class="cert-icon" id="certIcon">⏳</div>
+        <div class="cert-label">恭喜獲得</div>
+        <div class="cert-prize" id="certPrize">載入中...</div>
+        <div class="cert-label" style="margin-top:16px;">抽出時間</div>
+        <div class="cert-time" id="certTime">--:--:--</div>
+        <div class="cert-status" id="certStatus">驗證中...</div>
+    </div>
+    <button class="back-btn" id="backBtn">← 返回轉盤主頁</button>
+</div>
+
+<!-- 抽獎主畫面 -->
+<div id="appMode">
+    <header>
+        <h1>⚡ 智慧轉盤 Ultra 防偽版</h1>
+    </header>
+
+    <div class="toast" id="toastMsg"></div>
+    <div id="countdownOverlay">3</div>
+
+    <div class="container">
+        <!-- 轉盤區 -->
+        <div class="wheel-section">
+            <div class="wheel-wrapper">
+                <div class="pointer"></div>
+                <canvas id="wheelCanvas" width="800" height="800"></canvas>
+            </div>
+            <div class="spin-controls">
+                <button id="spinBtn" class="spin-btn" onclick="startDraw(false)">🎰 開始抽獎</button>
+                <button id="autoBtn" class="auto-draw-btn" onclick="startDraw(true)">
+                    <span>🤖 連抽</span>
+                    <small id="autoDrawLabel">3連抽</small>
+                </button>
+            </div>
+            <div class="local-warning" id="localWarning">
+                ⚠️ 單機環境 (file://)：QR Code 僅能產生純文字，請上傳至網頁空間以啟用防偽驗證功能。
+            </div>
+        </div>
+
+        <!-- 面板區 -->
+        <div class="panel-section">
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('input', this)">📝 名單</div>
+                <div class="tab" onclick="switchTab('settings', this)">⚙️ 設定</div>
+                <div class="tab" onclick="switchTab('history', this)">🏆 紀錄 <span id="historyCount">0</span></div>
+            </div>
+
+            <div id="tab-input" class="tab-content active">
+                <textarea id="itemsInput" placeholder="請輸入選項，一行一個..."></textarea>
+                <div class="hint">
+                    💡 包含「頭獎／特獎／大獎」字眼會觸發尊爵金特效。<br>
+                    💡 支援權重：<code>張三,5</code> ｜ 支援凍結：<code>#大獎</code>
+                </div>
+            </div>
+
+            <div id="tab-settings" class="tab-content">
+                <div class="setting-row">
+                    <span>🛡️ 活動防偽密鑰 (勿洩漏)</span>
+                    <input type="text" id="secretKey" value="Ultra2026">
+                </div>
+                <div class="setting-row">
+                    <span>🗑️ 抽中自動剔除 (不重複)</span>
+                    <label class="switch"><input type="checkbox" id="setRemove" checked><span class="slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <span>⏱️ 抽獎前 3 秒懸疑倒數</span>
+                    <label class="switch"><input type="checkbox" id="setCountdown" checked><span class="slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <span>🤖 自動連抽次數</span>
+                    <input type="number" id="autoDrawCount" min="2" max="50" value="3">
+                </div>
+                <button class="export-btn" onclick="exportCSV()">📥 匯出防偽查核報表 (CSV)</button>
+            </div>
+
+            <div id="tab-history" class="tab-content">
+                <div class="list-container" id="historyList"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 中獎 Modal -->
+<div id="confetti"></div>
+<div class="modal" id="resultModal">
+    <div class="modal-box">
+        <div class="modal-label">🎉 恭喜獲得 🎉</div>
+        <div class="modal-winner" id="winnerText">Name</div>
+        <img id="qrCodeImg" src="" alt="兌獎 QR Code">
+        <div class="qr-desc" id="qrDesc">
+            📱 請截圖或掃描此 QR Code 儲存憑證<br>
+            <span style="color:var(--success)">具備 SHA-256 密碼學防偽簽章</span>
+        </div>
+        <button class="modal-confirm" onclick="closeModal()">確認領取</button>
+    </div>
+</div>
+
+<script>
+    // ==========================================
+    // 常數與 DOM 快取
+    // ==========================================
+    const canvas    = document.getElementById('wheelCanvas');
+    const ctx       = canvas.getContext('2d');
+    const input     = document.getElementById('itemsInput');
+    const secretInput = document.getElementById('secretKey');
+    const spinBtn   = document.getElementById('spinBtn');
+    const autoBtn   = document.getElementById('autoBtn');
+
+    const COLORS = ['#ef4444','#f97316','#f59e0b','#84cc16','#10b981','#06b6d4','#3b82f6','#8b5cf6','#d946ef','#f43f5e'];
+    const PRIZE_KEYWORDS = ['頭獎', '特獎', '大獎'];
+    const isGoldPrize = name => PRIZE_KEYWORDS.some(k => name.includes(k));
+
+    let wheelItems       = [];
+    let historyData      = [];
+    let currentRotation  = 0;
+    let isSpinning       = false;
+    let autoDrawRemaining = 0;
+    let currentWinnerObj  = null;
+
+    // ==========================================
+    // 密碼學簽章
+    // ==========================================
+    async function generateSignature(name, time, secret) {
+        const msg = new TextEncoder().encode(`${name}||${time}||${secret}`);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', msg);
+        return Array.from(new Uint8Array(hashBuffer))
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('')
+            .substring(0, 16);
+    }
+
+    // ==========================================
+    // 1. 初始化與模式偵測
+    // ==========================================
+    async function init() {
+        const urlParams = new URLSearchParams(window.location.search);
+
+        if (urlParams.get('verify') === '1') {
+            document.getElementById('appMode').style.display = 'none';
+            document.getElementById('verifyMode').style.display = 'block';
+            await runVerification(urlParams);
+            return;
+        }
+
+        // 抽獎主模式
+        input.value = localStorage.getItem('ultra_list')
+            || "蘋果,1\n大獎/特獎 (尊爵金),1\n香蕉,1\n#隱藏項目(加上#凍結),1";
+        secretInput.value = localStorage.getItem('ultra_secret') || "Ultra2026";
+
+        const savedHistory = localStorage.getItem('ultra_history');
+        if (savedHistory) {
+            try { historyData = JSON.parse(savedHistory); } catch { historyData = []; }
+        }
+
+        input.addEventListener('input', () => {
+            updateWheel();
+            localStorage.setItem('ultra_list', input.value);
+        });
+        secretInput.addEventListener('input', () =>
+            localStorage.setItem('ultra_secret', secretInput.value)
+        );
+        document.getElementById('autoDrawCount').addEventListener('input', e => {
+            document.getElementById('autoDrawLabel').innerText = e.target.value + '連抽';
+        });
+        canvas.addEventListener('transitionend', onSpinEnd);
+        document.getElementById('backBtn').addEventListener('click', () => {
+            window.location.href = window.location.href.split('?')[0];
+        });
+
+        if (window.location.href.startsWith('file://')) {
+            document.getElementById('localWarning').style.display = 'block';
+        }
+
+        updateWheel();
+        updateHistoryUI();
+    }
+
+    // ==========================================
+    // 2. 驗證頁面
+    // ==========================================
+    async function runVerification(params) {
+        const name = params.get('n');
+        const time = params.get('t');
+        const sig  = params.get('s');
+        const localSecret = localStorage.getItem('ultra_secret') || "Ultra2026";
+
+        document.getElementById('certPrize').innerText = name;
+        document.getElementById('certTime').innerText  = decodeURIComponent(time);
+        document.getElementById('certPrize').className =
+            'cert-prize ' + (isGoldPrize(name) ? 'gold' : 'normal');
+
+        const expectedSig = await generateSignature(name, time, localSecret);
+        const card   = document.getElementById('certCard');
+        const status = document.getElementById('certStatus');
+        const icon   = document.getElementById('certIcon');
+
+        if (sig === expectedSig) {
+            card.className  = 'cert-card valid';
+            icon.innerText  = '✅';
+            status.innerText = '憑證有效 (防偽驗證通過)';
+            fireConfetti();
+        } else {
+            card.className  = 'cert-card invalid';
+            icon.innerText  = '❌';
+            status.innerText = '無效憑證 (簽章不符或遭竄改)';
+        }
+    }
+
+    // ==========================================
+    // 3. 轉盤解析與繪製
+    // ==========================================
+    function updateWheel() {
+        const lines = input.value.split('\n');
+        wheelItems = [];
+        let totalWeight = 0;
+
+        lines.forEach((line, index) => {
+            const text = line.trim();
+            if (!text || text.startsWith('#')) return;
+            const parts  = text.split(',');
+            const name   = parts[0].trim();
+            const weight = parts.length > 1 ? parseFloat(parts[1]) : 1;
+            if (weight > 0) {
+                wheelItems.push({ index, name, weight, original: line, color: COLORS[wheelItems.length % COLORS.length] });
+                totalWeight += weight;
+            }
+        });
+
+        let currentAngle = -Math.PI / 2;
+        wheelItems.forEach(item => {
+            const sliceAngle = (item.weight / totalWeight) * Math.PI * 2;
+            item.startAngle = currentAngle;
+            item.endAngle   = currentAngle + sliceAngle;
+            currentAngle   += sliceAngle;
+        });
+
+        drawCanvas();
+        setButtonsDisabled(wheelItems.length === 0);
+    }
+
+    function drawCanvas() {
+        const cx = canvas.width / 2, cy = canvas.height / 2, r = cx - 15;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        if (wheelItems.length === 0) {
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255,255,255,0.04)';
+            ctx.fill();
+            return;
+        }
+
+        const fontSize = wheelItems.length > 15 ? 24 : 34;
+
+        wheelItems.forEach(item => {
+            // 扇形
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.arc(cx, cy, r, item.startAngle, item.endAngle);
+            ctx.fillStyle = item.color;
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // 文字
+            const midAngle = item.startAngle + (item.endAngle - item.startAngle) / 2;
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(midAngle);
+            ctx.textAlign    = 'right';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle    = '#fff';
+            ctx.shadowColor  = 'rgba(0,0,0,0.8)';
+            ctx.shadowBlur   = 4;
+            ctx.font         = `bold ${fontSize}px sans-serif`;
+            const label = item.name.length > 12 ? item.name.substring(0, 11) + '…' : item.name;
+            ctx.fillText(label, r - 30, 0);
+            ctx.restore();
+        });
+
+        // 中心圓
+        ctx.beginPath(); ctx.arc(cx, cy, 34, 0, Math.PI * 2);
+        ctx.fillStyle = '#fff'; ctx.fill();
+        ctx.beginPath(); ctx.arc(cx, cy, 18, 0, Math.PI * 2);
+        ctx.fillStyle = '#1e293b'; ctx.fill();
+    }
+
+    // ==========================================
+    // 4. 抽獎與倒數
+    // ==========================================
+    async function startDraw(isAuto) {
+        if (isSpinning || wheelItems.length === 0) return;
+
+        autoDrawRemaining = isAuto ? parseInt(document.getElementById('autoDrawCount').value) : 0;
+
+        if (document.getElementById('setCountdown').checked && !isAuto) {
+            const overlay = document.getElementById('countdownOverlay');
+            overlay.classList.add('active');
+            for (let i = 3; i > 0; i--) {
+                overlay.innerText = i;
+                await sleep(800);
+            }
+            overlay.innerText = 'GO!';
+            await sleep(400);
+            overlay.classList.remove('active');
+        }
+
+        executeSpin();
+    }
+
+    function executeSpin() {
+        isSpinning = true;
+        setButtonsDisabled(true);
+
+        // 密碼學亂數選取贏家
+        const arr = new Uint32Array(1);
+        window.crypto.getRandomValues(arr);
+        const totalWeight = wheelItems.reduce((s, i) => s + i.weight, 0);
+        let random = (arr[0] / (0xffffffff + 1)) * totalWeight;
+
+        let winnerIndex = wheelItems.length - 1; // 預設最後一個，避免浮點誤差
+        for (let i = 0; i < wheelItems.length; i++) {
+            random -= wheelItems[i].weight;
+            if (random <= 0) { winnerIndex = i; break; }
+        }
+
+        currentWinnerObj = wheelItems[winnerIndex];
+        const sliceMid = currentWinnerObj.startAngle + (currentWinnerObj.endAngle - currentWinnerObj.startAngle) / 2;
+        const offset   = (Math.random() * 0.6 - 0.3) * (currentWinnerObj.endAngle - currentWinnerObj.startAngle);
+
+        let targetDeg = ((-Math.PI / 2) - (sliceMid + offset)) * (180 / Math.PI);
+        let diff = targetDeg - (currentRotation % 360);
+        while (diff < 0) diff += 360;
+
+        currentRotation += diff + 360 * 6;
+        canvas.style.transitionDuration = autoDrawRemaining > 0 ? '2.5s' : '4.5s';
+        canvas.style.transitionTimingFunction = 'cubic-bezier(0.17, 0.67, 0.12, 1)';
+        canvas.style.transform = `rotate(${currentRotation}deg)`;
+    }
+
+    async function onSpinEnd() {
+        if (!isSpinning) return;
+
+        const winner  = currentWinnerObj;
+        const timeStr = new Date().toLocaleTimeString('zh-TW', { hour12: false });
+        const secret  = secretInput.value;
+        const sig     = await generateSignature(winner.name, timeStr, secret);
+
+        // 存入紀錄
+        historyData.unshift({ time: timeStr, name: winner.name, original: winner.original, sig });
+        localStorage.setItem('ultra_history', JSON.stringify(historyData));
+        updateHistoryUI();
+
+        // 剔除名單
+        if (document.getElementById('setRemove').checked || autoDrawRemaining > 0) {
+            const lines = input.value.split('\n');
+            lines[winner.index] = '';
+            input.value = lines.filter(l => l.trim() !== '').join('\n');
+            localStorage.setItem('ultra_list', input.value);
+            updateWheel();
+        }
+
+        if (autoDrawRemaining > 1) {
+            autoDrawRemaining--;
+            showToast(`🎉 抽中：${winner.name}（剩餘 ${autoDrawRemaining} 抽）`);
+            setTimeout(executeSpin, 1000);
+        } else {
+            autoDrawRemaining = 0;
+            showResultModal(winner.name, timeStr, sig);
+        }
+    }
+
+    // ==========================================
+    // 5. 結果 Modal 與防偽 QR Code
+    // ==========================================
+    function showResultModal(name, timeStr, sig) {
+        const textEl = document.getElementById('winnerText');
+        textEl.innerText  = name;
+        textEl.className  = 'modal-winner ' + (isGoldPrize(name) ? 'gold' : 'normal');
+
+        const baseUrl = window.location.href.split('?')[0];
+        let qrData;
+
+        if (baseUrl.startsWith('file://')) {
+            qrData = encodeURIComponent(`🏆獎項:${name}\n⏰時間:${timeStr}`);
+            document.getElementById('qrDesc').innerHTML =
+                `⚠️ 單機模式：QR 僅含純文字資訊<br><span style="color:#ffd740">請上傳至網路空間啟用防偽驗證頁面</span>`;
+        } else {
+            const verifyUrl = `${baseUrl}?verify=1&n=${encodeURIComponent(name)}&t=${encodeURIComponent(timeStr)}&s=${sig}`;
+            qrData = encodeURIComponent(verifyUrl);
+            document.getElementById('qrDesc').innerHTML =
+                `📱 請截圖或掃描此 QR Code 儲存憑證<br><span style="color:var(--success)">具備 SHA-256 密碼學防偽簽章</span>`;
+        }
+
+        document.getElementById('qrCodeImg').src =
+            `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${qrData}`;
+        document.getElementById('resultModal').classList.add('active');
+        fireConfetti();
+
+        isSpinning = false;
+        setButtonsDisabled(wheelItems.length === 0);
+    }
+
+    // ==========================================
+    // 6. 紀錄 UI
+    // ==========================================
+    function updateHistoryUI() {
+        document.getElementById('historyCount').innerText = historyData.length;
+        const list = document.getElementById('historyList');
+
+        if (historyData.length === 0) {
+            list.innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px;">尚無抽獎紀錄</div>';
+            return;
+        }
+
+        list.innerHTML = historyData.map((h, i) => `
+            <div class="history-item">
+                <div class="history-item-info">
+                    <div class="history-item-name" style="color:${isGoldPrize(h.name) ? 'var(--gold)' : '#fff'}">${h.name}</div>
+                    <div class="history-item-meta">⏰ ${h.time} | 🔑 ${h.sig.substring(0, 8)}…</div>
+                </div>
+                <div class="history-actions">
+                    <button class="history-btn restore" onclick="restoreHistory(${i})">↩️ 還原</button>
+                    <button class="history-btn delete"  onclick="deleteHistory(${i})">🗑️</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function restoreHistory(idx) {
+        const item = historyData[idx];
+        input.value += (input.value ? '\n' : '') + item.original;
+        localStorage.setItem('ultra_list', input.value);
+        updateWheel();
+        deleteHistory(idx);
+    }
+
+    function deleteHistory(idx) {
+        historyData.splice(idx, 1);
+        localStorage.setItem('ultra_history', JSON.stringify(historyData));
+        updateHistoryUI();
+    }
+
+    function exportCSV() {
+        if (historyData.length === 0) return alert('無紀錄可匯出');
+        let csv = '抽出時間,得獎選項,SHA256防偽簽章\n';
+        historyData.forEach(h => { csv += `${h.time},${h.name},${h.sig}\n`; });
+        const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `防偽查核報表_${new Date().toISOString().slice(0, 10)}.csv`;
+        link.click();
+    }
+
+    // ==========================================
+    // 7. 輔助函式
+    // ==========================================
+    const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+    function setButtonsDisabled(disabled) {
+        spinBtn.disabled = disabled;
+        autoBtn.disabled = disabled;
+    }
+
+    function showToast(msg) {
+        const toast = document.getElementById('toastMsg');
+        toast.innerText = msg;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2200);
+    }
+
+    function switchTab(tabId, el) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        el.classList.add('active');
+        document.getElementById('tab-' + tabId).classList.add('active');
+    }
+
+    function closeModal() {
+        document.getElementById('resultModal').classList.remove('active');
+        document.getElementById('confetti').innerHTML = '';
+    }
+
+    function fireConfetti() {
+        const container = document.getElementById('confetti');
+        container.innerHTML = '';
+        for (let i = 0; i < 100; i++) {
+            const d = document.createElement('div');
+            d.style.cssText = `position:absolute;width:8px;height:14px;`
+                + `background:${COLORS[Math.floor(Math.random() * COLORS.length)]};`
+                + `left:${Math.random() * 100}vw;top:-10px;opacity:0;border-radius:2px;`;
+            container.appendChild(d);
+            d.animate(
+                [
+                    { transform: 'translate(0,0) rotate(0deg)', opacity: 1 },
+                    { transform: `translate(${Math.random() * 300 - 150}px, 100vh) rotate(${Math.random() * 720}deg)`, opacity: 0 }
+                ],
+                { duration: Math.random() * 2000 + 1500, easing: 'cubic-bezier(.37,0,.63,1)', fill: 'forwards' }
+            );
+        }
+    }
+
+    init();
+</script>
+</body>
+</html>
